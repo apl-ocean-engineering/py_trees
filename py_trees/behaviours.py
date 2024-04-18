@@ -591,18 +591,10 @@ class CheckBlackboardVariableValue(behaviour.Behaviour):
         success = self.check.operator(value, self.check.value)
 
         if success:
-            self.feedback_message = "'%s' comparison succeeded [v: %s][e: %s]" % (
-                self.check.variable,
-                value,
-                self.check.value,
-            )
+            self.feedback_message = "'%s' comparison succeeded" % (self.check.variable,)
             return common.Status.SUCCESS
         else:
-            self.feedback_message = "'%s' comparison failed [v: %s][e: %s]" % (
-                self.check.variable,
-                value,
-                self.check.value,
-            )
+            self.feedback_message = "'%s' comparison failed" % (self.check.variable,)
             return common.Status.FAILURE
 
 
