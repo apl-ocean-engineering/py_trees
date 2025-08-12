@@ -95,8 +95,7 @@ class Decorator(behaviour.Behaviour):
     Args:
         child: the child to be decorated
         name: the decorator name
-        verbose: (included for consistency in API, but this behaviour
-            doesn't ever set feedback_message)
+        verbose: whether to set feedback_message based on status.
 
     Raises:
         TypeError: if the child is not an instance of :class:`~py_trees.behaviour.Behaviour`
@@ -690,8 +689,7 @@ class OneShot(Decorator):
             child: behaviour to shoot
             name: the decorator name
             policy: policy determining when the oneshot should activate
-            verbose: (included for consistency in API, but this decorator
-                doesn't ever set feedback_message)
+            verbose: set feedback_message when oneshot completes
         """
         super(OneShot, self).__init__(name=name, child=child, verbose=verbose)
         self.final_status: typing.Optional[common.Status] = None
@@ -758,6 +756,7 @@ class Inverter(Decorator):
         Args:
             name : the decorator name
             child : behaviour to invert
+            verbose: set feedback_message based on status
         """
         super(Inverter, self).__init__(name=name, child=child, verbose=verbose)
 
@@ -942,6 +941,7 @@ class Condition(Decorator):
             name: the decorator name
             child: the child to be decorated
             status: the desired status to watch for
+            verbose: set feedback_message based on status
         """
         super(Condition, self).__init__(name=name, child=child, verbose=verbose)
         self.succeed_status = status

@@ -525,6 +525,8 @@ class SetBlackboardVariable(behaviour.Behaviour):
         variable_value: value of the variable to set
         overwrite: when False, do not set the variable if it already exists
         name: name of the behaviour
+        verbose: (included for consistency in API, but this decorator
+            doesn't ever set feedback_message)
     """
 
     def __init__(
