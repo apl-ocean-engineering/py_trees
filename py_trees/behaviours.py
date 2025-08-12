@@ -122,6 +122,7 @@ class Periodic(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         n: period value (in ticks)
+        verbose: set feedback_message based on status
 
     .. note:: It does not reset the count when initialising.
     """
@@ -172,6 +173,8 @@ class StatusQueue(behaviour.Behaviour):
         name: name of the behaviour
         sequence: list of status values to cycle through
         eventually: status to use eventually, None to re-cycle the sequence
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -225,6 +228,7 @@ class SuccessEveryN(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         n: trigger success on every n'th tick
+        verbose: set feedback_message based on status
 
     .. tip::
        Use with decorators to change the status value as desired, e.g.
@@ -271,6 +275,8 @@ class TickCounter(behaviour.Behaviour):
         name: name of the behaviour
         duration: number of ticks to run
         completion_status: status to switch to once the counter has expired
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -328,6 +334,7 @@ class BlackboardToStatus(behaviour.Behaviour):
     Args:
         variable_name: name of the variable look for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
 
     Raises:
         KeyError: if the variable doesn't exist
@@ -386,6 +393,7 @@ class CheckBlackboardVariableExists(behaviour.Behaviour):
     Args:
         variable_name: name of the variable look for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
     def __init__(
@@ -441,6 +449,7 @@ class WaitForBlackboardVariable(CheckBlackboardVariableExists):
     Args:
         variable_name: name of the variable to wait for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
     def __init__(
@@ -482,6 +491,7 @@ class UnsetBlackboardVariable(behaviour.Behaviour):
     Args:
         key: unset this key-value pair
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
     def __init__(self, name: str, key: str, verbose: bool = True):
@@ -570,6 +580,7 @@ class CheckBlackboardVariableValue(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         check: a comparison expression to check against
+        verbose: set feedback_message based on status
 
     .. note::
         If the variable does not yet exist on the blackboard, the behaviour will
@@ -660,6 +671,8 @@ class WaitForBlackboardVariableValue(CheckBlackboardVariableValue):
     Args:
         check: a comparison expression to check against
         name: name of the behaviour
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -698,6 +711,7 @@ class CheckBlackboardVariableValues(behaviour.Behaviour):
         logical_operator: a logical check to apply across the results of the blackboard variable checks
         name: name of the behaviour
         namespace: optionally store results of the checks (boolean) under this namespace
+        verbose: set feedback_message based on status
 
     .. tip::
         The python `operator module`_ includes many useful logical operators, e.g. operator.xor.
@@ -783,6 +797,8 @@ class ProbabilisticBehaviour(behaviour.Behaviour):
         name: name of the behaviour
         weights: 3 probabilities that correspond to returning :data:`~py_trees.common.Status.SUCCESS`,
            :data:`~py_trees.common.Status.FAILURE` and :data:`~py_trees.common.Status.RUNNING` respectively.
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
 
     .. note:: Probability distribution does not need to be normalised, it will be normalised internally.
 

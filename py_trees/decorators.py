@@ -95,6 +95,8 @@ class Decorator(behaviour.Behaviour):
     Args:
         child: the child to be decorated
         name: the decorator name
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
 
     Raises:
         TypeError: if the child is not an instance of :class:`~py_trees.behaviour.Behaviour`
@@ -194,6 +196,7 @@ class Repeat(Decorator):
         child: the child behaviour or subtree
         num_success: repeat this many times (-1 to repeat indefinitely)
         name: the decorator name
+        verbose: set feedback_message based on status
     """
 
     def __init__(
@@ -254,6 +257,7 @@ class Retry(Decorator):
         child: the child behaviour or subtree
         num_failures: maximum number of permitted failures
         name: the decorator name
+        verbose: set feedback_message based on status
     """
 
     def __init__(
@@ -308,6 +312,8 @@ class StatusToBlackboard(Decorator):
         child: the child behaviour or subtree
         variable_name: name of the blackboard variable, may be nested, e.g. foo.status
         name: the decorator name
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -364,6 +370,8 @@ class EternalGuard(Decorator):
         condition: a functional check that determines execution or not of the subtree
         blackboard_keys: provide read access for the conditional function to these keys
         name: the decorator name
+        verbose: (included for consistency in API, but this decorator
+            doesn't ever set feedback_message)
 
     Examples:
         Simple conditional function returning True/False:
@@ -512,6 +520,7 @@ class Timeout(Decorator):
             child: the child behaviour or subtree
             name: the decorator name
             duration: timeout length in seconds
+            verbose: set feedback_message based on time remaining
         """
         super(Timeout, self).__init__(name=name, child=child, verbose=verbose)
         self.duration = duration
@@ -585,6 +594,7 @@ class Count(Decorator):
         Args:
             name: the decorator name
             child: the child behaviour or subtree
+            verbose: set feedback_message based on tick count
         """
         super(Count, self).__init__(name=name, child=child, verbose=verbose)
         self.total_tick_count = 0
@@ -680,6 +690,8 @@ class OneShot(Decorator):
             child: behaviour to shoot
             name: the decorator name
             policy: policy determining when the oneshot should activate
+            verbose: (included for consistency in API, but this decorator
+                doesn't ever set feedback_message)
         """
         super(OneShot, self).__init__(name=name, child=child, verbose=verbose)
         self.final_status: typing.Optional[common.Status] = None
