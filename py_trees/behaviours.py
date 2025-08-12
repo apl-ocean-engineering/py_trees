@@ -36,7 +36,8 @@ def success(self: behaviour.Behaviour) -> common.Status:
         behaviour status
     """
     self.logger.debug("%s.update()" % self.__class__.__name__)
-    self.feedback_message = "success"
+    if self.verbose:
+        self.feedback_message = "success"
     return common.Status.SUCCESS
 
 
@@ -50,7 +51,8 @@ def failure(self: behaviour.Behaviour) -> common.Status:
         behaviour status
     """
     self.logger.debug("%s.update()" % self.__class__.__name__)
-    self.feedback_message = "failure"
+    if self.verbose:
+        self.feedback_message = "failure"
     return common.Status.FAILURE
 
 
@@ -64,7 +66,8 @@ def running(self: behaviour.Behaviour) -> common.Status:
         behaviour status
     """
     self.logger.debug("%s.update()" % self.__class__.__name__)
-    self.feedback_message = "running"
+    if self.verbose:
+        self.feedback_message = "running"
     return common.Status.RUNNING
 
 
@@ -78,7 +81,8 @@ def dummy(self: behaviour.Behaviour) -> common.Status:
         behaviour status
     """
     self.logger.debug("%s.update()" % self.__class__.__name__)
-    self.feedback_message = "crash test dummy"
+    if self.verbose:
+        self.feedback_message = "crash test dummy"
     return common.Status.RUNNING
 
 
@@ -118,12 +122,13 @@ class Periodic(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         n: period value (in ticks)
+        verbose: set feedback_message based on status
 
     .. note:: It does not reset the count when initialising.
     """
 
-    def __init__(self, name: str, n: int):
-        super(Periodic, self).__init__(name)
+    def __init__(self, name: str, n: int, verbose: bool = True):
+        super(Periodic, self).__init__(name, verbose)
         self.count = 0
         self.period = n
         self.response = common.Status.RUNNING
@@ -138,17 +143,21 @@ class Periodic(behaviour.Behaviour):
         self.count += 1
         if self.count > self.period:
             if self.response == common.Status.FAILURE:
-                self.feedback_message = "flip to running"
+                if self.verbose:
+                    self.feedback_message = "flip to running"
                 self.response = common.Status.RUNNING
             elif self.response == common.Status.RUNNING:
-                self.feedback_message = "flip to success"
+                if self.verbose:
+                    self.feedback_message = "flip to success"
                 self.response = common.Status.SUCCESS
             else:
-                self.feedback_message = "flip to failure"
+                if self.verbose:
+                    self.feedback_message = "flip to failure"
                 self.response = common.Status.FAILURE
             self.count = 0
         else:
-            self.feedback_message = "constant"
+            if self.verbose:
+                self.feedback_message = "constant"
         return self.response
 
 
@@ -164,6 +173,8 @@ class StatusQueue(behaviour.Behaviour):
         name: name of the behaviour
         sequence: list of status values to cycle through
         eventually: status to use eventually, None to re-cycle the sequence
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -171,8 +182,9 @@ class StatusQueue(behaviour.Behaviour):
         name: str,
         queue: typing.List[common.Status],
         eventually: typing.Optional[common.Status],
+        verbose: bool = True,
     ):
-        super(StatusQueue, self).__init__(name)
+        super(StatusQueue, self).__init__(name, verbose)
         self.queue = queue
         self.eventually = eventually
         self.current_queue = copy.copy(queue)
@@ -216,14 +228,15 @@ class SuccessEveryN(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         n: trigger success on every n'th tick
+        verbose: set feedback_message based on status
 
     .. tip::
        Use with decorators to change the status value as desired, e.g.
        :meth:`py_trees.decorators.FailureIsRunning`
     """
 
-    def __init__(self, name: str, n: int):
-        super(SuccessEveryN, self).__init__(name)
+    def __init__(self, name: str, n: int, verbose: bool = True):
+        super(SuccessEveryN, self).__init__(name, verbose)
         self.count = 0
         self.every_n = n
 
@@ -237,10 +250,12 @@ class SuccessEveryN(behaviour.Behaviour):
         self.count += 1
         self.logger.debug("%s.update()][%s]" % (self.__class__.__name__, self.count))
         if self.count % self.every_n == 0:
-            self.feedback_message = "now"
+            if self.verbose:
+                self.feedback_message = "now"
             return common.Status.SUCCESS
         else:
-            self.feedback_message = "not yet"
+            if self.verbose:
+                self.feedback_message = "not yet"
             return common.Status.FAILURE
 
 
@@ -260,10 +275,18 @@ class TickCounter(behaviour.Behaviour):
         name: name of the behaviour
         duration: number of ticks to run
         completion_status: status to switch to once the counter has expired
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
-    def __init__(self, name: str, duration: int, completion_status: common.Status):
-        super().__init__(name=name)
+    def __init__(
+        self,
+        name: str,
+        duration: int,
+        completion_status: common.Status,
+        verbose: bool = True,
+    ):
+        super().__init__(name=name, verbose=verbose)
         self.completion_status = completion_status
         self.duration = duration
         self.counter = 0
@@ -311,6 +334,7 @@ class BlackboardToStatus(behaviour.Behaviour):
     Args:
         variable_name: name of the variable look for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
 
     Raises:
         KeyError: if the variable doesn't exist
@@ -321,8 +345,9 @@ class BlackboardToStatus(behaviour.Behaviour):
         self,
         name: str,
         variable_name: str,
+        verbose: bool = True,
     ):
-        super().__init__(name=name)
+        super().__init__(name=name, verbose=verbose)
         name_components = variable_name.split(".")
         self.key = name_components[0]
         self.key_attributes = ".".join(
@@ -346,7 +371,8 @@ class BlackboardToStatus(behaviour.Behaviour):
             raise TypeError(
                 f"{self.variable_name} is not of type py_trees.common.Status"
             )
-        self.feedback_message = f"{self.variable_name}: {status}"
+        if self.verbose:
+            self.feedback_message = f"{self.variable_name}: {status}"
         return status
 
 
@@ -367,14 +393,16 @@ class CheckBlackboardVariableExists(behaviour.Behaviour):
     Args:
         variable_name: name of the variable look for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
     def __init__(
         self,
         name: str,
         variable_name: str,
+        verbose: bool = True,
     ):
-        super().__init__(name=name)
+        super().__init__(name=name, verbose=verbose)
         self.variable_name = variable_name
         name_components = variable_name.split(".")
         self.key = name_components[0]
@@ -394,10 +422,14 @@ class CheckBlackboardVariableExists(behaviour.Behaviour):
         self.logger.debug("%s.update()" % self.__class__.__name__)
         try:
             _ = self.blackboard.get(self.variable_name)
-            self.feedback_message = "variable '{}' found".format(self.variable_name)
+            if self.verbose:
+                self.feedback_message = "variable '{}' found".format(self.variable_name)
             return common.Status.SUCCESS
         except KeyError:
-            self.feedback_message = "variable '{}' not found".format(self.variable_name)
+            if self.verbose:
+                self.feedback_message = "variable '{}' not found".format(
+                    self.variable_name
+                )
             return common.Status.FAILURE
 
 
@@ -417,14 +449,16 @@ class WaitForBlackboardVariable(CheckBlackboardVariableExists):
     Args:
         variable_name: name of the variable to wait for, may be nested, e.g. battery.percentage
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
     def __init__(
         self,
         name: str,
         variable_name: str,
+        verbose: bool = True,
     ):
-        super().__init__(name=name, variable_name=variable_name)
+        super().__init__(name=name, variable_name=variable_name, verbose=verbose)
 
     def update(self) -> common.Status:
         """
@@ -437,10 +471,12 @@ class WaitForBlackboardVariable(CheckBlackboardVariableExists):
         new_status = super().update()
         # CheckBlackboardExists only returns SUCCESS || FAILURE
         if new_status == common.Status.SUCCESS:
-            self.feedback_message = "'{}' found".format(self.key)
+            if self.verbose:
+                self.feedback_message = "'{}' found".format(self.key)
             return common.Status.SUCCESS
         else:  # new_status == common.Status.FAILURE
-            self.feedback_message = "waiting for key '{}'...".format(self.key)
+            if self.verbose:
+                self.feedback_message = "waiting for key '{}'...".format(self.key)
             return common.Status.RUNNING
 
 
@@ -455,10 +491,11 @@ class UnsetBlackboardVariable(behaviour.Behaviour):
     Args:
         key: unset this key-value pair
         name: name of the behaviour
+        verbose: set feedback_message based on status
     """
 
-    def __init__(self, name: str, key: str):
-        super().__init__(name=name)
+    def __init__(self, name: str, key: str, verbose: bool = True):
+        super().__init__(name=name, verbose=verbose)
         self.key = key
         self.blackboard = self.attach_blackboard_client()
         self.blackboard.register_key(key=self.key, access=common.Access.WRITE)
@@ -471,9 +508,11 @@ class UnsetBlackboardVariable(behaviour.Behaviour):
              :data:`~py_trees.common.Status.SUCCESS`
         """
         if self.blackboard.unset(self.key):
-            self.feedback_message = "'{}' found and removed".format(self.key)
+            if self.verbose:
+                self.feedback_message = "'{}' found and removed".format(self.key)
         else:
-            self.feedback_message = "'{}' not found, nothing to remove"
+            if self.verbose:
+                self.feedback_message = "'{}' not found, nothing to remove"
         return common.Status.SUCCESS
 
 
@@ -486,6 +525,8 @@ class SetBlackboardVariable(behaviour.Behaviour):
         variable_value: value of the variable to set
         overwrite: when False, do not set the variable if it already exists
         name: name of the behaviour
+        verbose: (included for consistency in API, but this decorator
+            doesn't ever set feedback_message)
     """
 
     def __init__(
@@ -494,8 +535,9 @@ class SetBlackboardVariable(behaviour.Behaviour):
         variable_name: str,
         variable_value: typing.Union[typing.Any, typing.Callable[[], typing.Any]],
         overwrite: bool,
+        verbose: bool = True,
     ):
-        super().__init__(name=name)
+        super().__init__(name=name, verbose=verbose)
         self.variable_name = variable_name
         name_components = variable_name.split(".")
         self.key = name_components[0]
@@ -540,6 +582,7 @@ class CheckBlackboardVariableValue(behaviour.Behaviour):
     Args:
         name: name of the behaviour
         check: a comparison expression to check against
+        verbose: set feedback_message based on status
 
     .. note::
         If the variable does not yet exist on the blackboard, the behaviour will
@@ -549,8 +592,10 @@ class CheckBlackboardVariableValue(behaviour.Behaviour):
         The python `operator module`_ includes many useful comparison operations.
     """
 
-    def __init__(self, name: str, check: common.ComparisonExpression):
-        super().__init__(name=name)
+    def __init__(
+        self, name: str, check: common.ComparisonExpression, verbose: bool = True
+    ):
+        super().__init__(name=name, verbose=verbose)
         self.check = check
         name_components = self.check.variable.split(".")
         self.key = name_components[0]
@@ -575,26 +620,34 @@ class CheckBlackboardVariableValue(behaviour.Behaviour):
                 try:
                     value = operator.attrgetter(self.key_attributes)(value)
                 except AttributeError:
+                    # I think error messages like this should propagate regardless of verbose
                     self.feedback_message = (
                         "blackboard key-value pair exists, but the value does not "
                         f"have the requested nested attributes [{self.key}]"
                     )
                     return common.Status.FAILURE
         except KeyError:
-            self.feedback_message = (
-                "key '{}' does not yet exist on the blackboard".format(
-                    self.check.variable
+            if self.verbose:
+                self.feedback_message = (
+                    "key '{}' does not yet exist on the blackboard".format(
+                        self.check.variable
+                    )
                 )
-            )
             return common.Status.FAILURE
 
         success = self.check.operator(value, self.check.value)
 
         if success:
-            self.feedback_message = "'%s' comparison succeeded" % (self.check.variable,)
+            if self.verbose:
+                self.feedback_message = "'%s' comparison succeeded" % (
+                    self.check.variable,
+                )
             return common.Status.SUCCESS
         else:
-            self.feedback_message = "'%s' comparison failed" % (self.check.variable,)
+            if self.verbose:
+                self.feedback_message = "'%s' comparison failed" % (
+                    self.check.variable,
+                )
             return common.Status.FAILURE
 
 
@@ -620,14 +673,17 @@ class WaitForBlackboardVariableValue(CheckBlackboardVariableValue):
     Args:
         check: a comparison expression to check against
         name: name of the behaviour
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
     """
 
     def __init__(
         self,
         name: str,
         check: common.ComparisonExpression,
+        verbose: bool = True,
     ):
-        super().__init__(check=check, name=name)
+        super().__init__(check=check, name=name, verbose=verbose)
 
     def update(self) -> common.Status:
         """
@@ -657,6 +713,7 @@ class CheckBlackboardVariableValues(behaviour.Behaviour):
         logical_operator: a logical check to apply across the results of the blackboard variable checks
         name: name of the behaviour
         namespace: optionally store results of the checks (boolean) under this namespace
+        verbose: set feedback_message based on status
 
     .. tip::
         The python `operator module`_ includes many useful logical operators, e.g. operator.xor.
@@ -671,8 +728,9 @@ class CheckBlackboardVariableValues(behaviour.Behaviour):
         checks: typing.List[common.ComparisonExpression],
         operator: typing.Callable[[bool, bool], bool],
         namespace: typing.Optional[str] = None,
+        verbose: bool = True,
     ):
-        super().__init__(name=name)
+        super().__init__(name=name, verbose=verbose)
         self.checks = checks
         self.operator = operator
         self.blackboard = self.attach_blackboard_client()
@@ -720,14 +778,16 @@ class CheckBlackboardVariableValues(behaviour.Behaviour):
                 self.blackboard_results.set(str(counter), results[counter - 1])
         logical_result = functools.reduce(self.operator, results)
         if logical_result:
-            self.feedback_message = "[{}]".format(
-                "|".join(["T" if result else "F" for result in results])
-            )
+            if self.verbose:
+                self.feedback_message = "[{}]".format(
+                    "|".join(["T" if result else "F" for result in results])
+                )
             return common.Status.SUCCESS
         else:
-            self.feedback_message = "[{}]".format(
-                "|".join(["T" if result else "F" for result in results])
-            )
+            if self.verbose:
+                self.feedback_message = "[{}]".format(
+                    "|".join(["T" if result else "F" for result in results])
+                )
             return common.Status.FAILURE
 
 
@@ -739,6 +799,8 @@ class ProbabilisticBehaviour(behaviour.Behaviour):
         name: name of the behaviour
         weights: 3 probabilities that correspond to returning :data:`~py_trees.common.Status.SUCCESS`,
            :data:`~py_trees.common.Status.FAILURE` and :data:`~py_trees.common.Status.RUNNING` respectively.
+        verbose: (included for consistency in API, but this behaviour
+            doesn't ever set feedback_message)
 
     .. note:: Probability distribution does not need to be normalised, it will be normalised internally.
 
@@ -747,13 +809,18 @@ class ProbabilisticBehaviour(behaviour.Behaviour):
 
     """
 
-    def __init__(self, name: str, weights: typing.Optional[typing.List[float]] = None):
+    def __init__(
+        self,
+        name: str,
+        weights: typing.Optional[typing.List[float]] = None,
+        verbose: bool = True,
+    ):
         if weights is not None and (type(weights) is not list or len(weights) != 3):
             raise ValueError(
                 "Either all or none of the probabilities must be specified"
             )
 
-        super(ProbabilisticBehaviour, self).__init__(name=name)
+        super(ProbabilisticBehaviour, self).__init__(name=name, verbose=verbose)
 
         self._population = [
             common.Status.SUCCESS,
