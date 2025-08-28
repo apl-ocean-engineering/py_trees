@@ -886,11 +886,23 @@ def _generate_text_blackboard(
             s += console.yellow + "{}\n".format(", ".join(metastrings))
             return style(s, apply_highlight) + console.reset
 
+        # Filter variables to display based on whether they will have changed since last time
+        changed_activities = [
+            blackboard.ActivityType.WRITE.value,
+            blackboard.ActivityType.UNSET.value,
+            blackboard.ActivityType.INITIALISED.value
+        ]
+        changed_keys = [
+            item.key for item in blackboard.Blackboard.activity_stream.data
+            if item.activity_type in changed_activities
+        ]
         text_indent: str = _symbols["space"] * (4 + indent)
         key_width: int = 0
         for key in storage.keys():
             key_width = len(key) if len(key) > key_width else key_width
         for key in sorted(storage.keys()):
+            if key not in changed_keys:
+                continue
             if metadata is not None:
                 yield assemble_metadata_line(
                     key=key,
