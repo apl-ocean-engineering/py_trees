@@ -818,8 +818,6 @@ def _generate_text_blackboard(
         metadata: typing.Optional[typing.Dict[str, blackboard.KeyMetaData]],
         indent: int,
     ) -> typing.Iterator[str]:
-        def format_ros_message(msg: genpy.message.Message):
-            return "...Got ROS message!"
 
         def assemble_value_line(
             key: str,
@@ -852,7 +850,7 @@ def _generate_text_blackboard(
                 + indent
                 + "{0: <{1}}".format(key, key_width)
                 + console.white
-                + ":"
+                + ": "
                 + lines_str
             )
 
@@ -1160,3 +1158,40 @@ def unicode_blackboard_activity_stream(
         indent=indent,
         symbols=unicode_symbols if console.has_unicode() else ascii_symbols,
     )
+
+
+def format_ros_message(msg: genpy.message.Message, depth: int = 0):
+    # return "...Got ROS message!"
+    msg_str = ""
+    padding = depth * "  "
+    for slot in msg.__slots__:
+        value = getattr(msg, slot)
+        if type(value) == bytes:
+            msg_str += padding + f"{slot}: bytes \n"
+        # TODO: handle stamp appropriately!
+        elif type(value) == genpy.message.Time:
+            msg_str += (
+                f"{padding}{slot}:\n"
+                + f"  {padding}secs: {value.secs}\n"
+                + f"  {padding}nsecs: {value.nsecs}\n"
+            )
+        # TODO: Handle arrays appropriately; will be a bit tricky because
+        #       they can be arrays of primitives OR arrays of messages
+        elif type(value) == list:
+            if len(value) == 0:
+                msg_str += padding + f"{slot}: [] \n"
+            elif issubclass(type(value[0]), genpy.message.Message):
+                msg_str += padding + f"{slot}: [ \n"
+                for item in value:
+                    msg_str += f"{padding}  -\n"
+                    msg_str += format_ros_message(item, depth + 2)
+                msg_str += padding + "] \n"
+            else:
+                msg_str += padding + f"{slot}: [{value}] \n"
+        elif issubclass(type(value), genpy.message.Message):
+            # TODO: Figure out indentation levels!
+            msg_str += padding + f"{slot}: \n" + format_ros_message(value, depth + 1)
+        else:
+            msg_str += padding + f"{slot}: {value} \n"
+    return msg_str
+
