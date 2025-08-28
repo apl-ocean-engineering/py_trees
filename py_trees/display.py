@@ -20,6 +20,9 @@ strings or stdout.
 # Imports
 ##############################################################################
 
+# ROS import for super hacky filtering of messages!
+import genpy
+
 import os
 import typing
 import uuid
@@ -815,6 +818,9 @@ def _generate_text_blackboard(
         metadata: typing.Optional[typing.Dict[str, blackboard.KeyMetaData]],
         indent: int,
     ) -> typing.Iterator[str]:
+        def format_ros_message(msg: genpy.message.Message):
+            return "...Got ROS message!"
+
         def assemble_value_line(
             key: str,
             value: typing.Any,
@@ -822,29 +828,34 @@ def _generate_text_blackboard(
             indent: str,
             key_width: int,
         ) -> str:
-            s = ""
-            lines = ("{0}".format(value)).split("\n")
-            if len(lines) > 1:
-                s += (
-                    console.cyan
-                    + indent
-                    + "{0: <{1}}".format(key, key_width)
-                    + console.white
-                    + ":\n"
-                )
-                for line in lines:
-                    s += console.yellow + indent + "  {0}\n".format(line)
+            is_ros_message = issubclass(type(value), genpy.message.Message)
+            if is_ros_message:
+                value_str = format_ros_message(value)
             else:
-                s += (
-                    console.cyan
-                    + indent
-                    + "{0: <{1}}".format(key, key_width)
-                    + console.white
-                    + ": "
-                    + console.yellow
-                    + "{0}\n".format(value)
+                value_str = "{0}".format(value)
+
+            lines = value_str.split("\n")
+            if len(lines) > 1:
+                lines_str = "\n"
+                for line in lines:
+                    lines_str += console.yellow + indent + "  {0}\n".format(line)
+            else:
+                lines_str = (
+                    console.yellow
+                    + value_str
+                    + "\n"
                     + console.reset
                 )
+
+            s = (
+                console.cyan
+                + indent
+                + "{0: <{1}}".format(key, key_width)
+                + console.white
+                + ":"
+                + lines_str
+            )
+
             return style(s, apply_highlight) + console.reset
 
         def assemble_metadata_line(
