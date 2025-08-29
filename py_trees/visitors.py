@@ -219,6 +219,9 @@ class DisplaySnapshotVisitor(SnapshotVisitor):
 
     def finalise(self) -> None:
         """Print a summary on stdout after all behaviours have been visited."""
+        if self.display_blackboard:
+            print(display.unicode_blackboard(key_filter=self.visited_blackboard_keys))
+
         if self.root is not None:
             print(
                 "\n"
@@ -230,7 +233,5 @@ class DisplaySnapshotVisitor(SnapshotVisitor):
                     previously_visited=self.previously_visited,
                 )
             )
-        if self.display_blackboard:
-            print(display.unicode_blackboard(key_filter=self.visited_blackboard_keys))
         if self.display_activity_stream:
             print(display.unicode_blackboard_activity_stream())

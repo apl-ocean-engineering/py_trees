@@ -20,6 +20,9 @@ strings or stdout.
 # Imports
 ##############################################################################
 
+# ROS import for super hacky filtering of messages!
+import genpy
+
 import os
 import typing
 import uuid
@@ -815,6 +818,7 @@ def _generate_text_blackboard(
         metadata: typing.Optional[typing.Dict[str, blackboard.KeyMetaData]],
         indent: int,
     ) -> typing.Iterator[str]:
+
         def assemble_value_line(
             key: str,
             value: typing.Any,
@@ -822,29 +826,34 @@ def _generate_text_blackboard(
             indent: str,
             key_width: int,
         ) -> str:
-            s = ""
-            lines = ("{0}".format(value)).split("\n")
-            if len(lines) > 1:
-                s += (
-                    console.cyan
-                    + indent
-                    + "{0: <{1}}".format(key, key_width)
-                    + console.white
-                    + ":\n"
-                )
-                for line in lines:
-                    s += console.yellow + indent + "  {0}\n".format(line)
+            is_ros_message = issubclass(type(value), genpy.message.Message)
+            if is_ros_message:
+                value_str = format_ros_message(value)
             else:
-                s += (
-                    console.cyan
-                    + indent
-                    + "{0: <{1}}".format(key, key_width)
-                    + console.white
-                    + ": "
-                    + console.yellow
-                    + "{0}\n".format(value)
+                value_str = "{0}".format(value)
+
+            lines = value_str.split("\n")
+            if len(lines) > 1:
+                lines_str = "\n"
+                for line in lines:
+                    lines_str += console.yellow + indent + "  {0}\n".format(line)
+            else:
+                lines_str = (
+                    console.yellow
+                    + value_str
+                    + "\n"
                     + console.reset
                 )
+
+            s = (
+                console.cyan
+                + indent
+                + "{0: <{1}}".format(key, key_width)
+                + console.white
+                + ": "
+                + lines_str
+            )
+
             return style(s, apply_highlight) + console.reset
 
         def assemble_metadata_line(
@@ -877,11 +886,23 @@ def _generate_text_blackboard(
             s += console.yellow + "{}\n".format(", ".join(metastrings))
             return style(s, apply_highlight) + console.reset
 
+        # Filter variables to display based on whether they will have changed since last time
+        changed_activities = [
+            blackboard.ActivityType.WRITE.value,
+            blackboard.ActivityType.UNSET.value,
+            blackboard.ActivityType.INITIALISED.value
+        ]
+        changed_keys = [
+            item.key for item in blackboard.Blackboard.activity_stream.data
+            if item.activity_type in changed_activities
+        ]
         text_indent: str = _symbols["space"] * (4 + indent)
         key_width: int = 0
         for key in storage.keys():
             key_width = len(key) if len(key) > key_width else key_width
         for key in sorted(storage.keys()):
+            if key not in changed_keys:
+                continue
             if metadata is not None:
                 yield assemble_metadata_line(
                     key=key,
@@ -1149,3 +1170,40 @@ def unicode_blackboard_activity_stream(
         indent=indent,
         symbols=unicode_symbols if console.has_unicode() else ascii_symbols,
     )
+
+
+def format_ros_message(msg: genpy.message.Message, depth: int = 0):
+    # return "...Got ROS message!"
+    msg_str = ""
+    padding = depth * "  "
+    for slot in msg.__slots__:
+        value = getattr(msg, slot)
+        if type(value) == bytes:
+            msg_str += padding + f"{slot}: bytes \n"
+        # TODO: handle stamp appropriately!
+        elif type(value) == genpy.message.Time:
+            msg_str += (
+                f"{padding}{slot}:\n"
+                + f"  {padding}secs: {value.secs}\n"
+                + f"  {padding}nsecs: {value.nsecs}\n"
+            )
+        # TODO: Handle arrays appropriately; will be a bit tricky because
+        #       they can be arrays of primitives OR arrays of messages
+        elif type(value) == list:
+            if len(value) == 0:
+                msg_str += padding + f"{slot}: [] \n"
+            elif issubclass(type(value[0]), genpy.message.Message):
+                msg_str += padding + f"{slot}: [ \n"
+                for item in value:
+                    msg_str += f"{padding}  -\n"
+                    msg_str += format_ros_message(item, depth + 2)
+                msg_str += padding + "] \n"
+            else:
+                msg_str += padding + f"{slot}: [{value}] \n"
+        elif issubclass(type(value), genpy.message.Message):
+            # TODO: Figure out indentation levels!
+            msg_str += padding + f"{slot}: \n" + format_ros_message(value, depth + 1)
+        else:
+            msg_str += padding + f"{slot}: {value} \n"
+    return msg_str
+
